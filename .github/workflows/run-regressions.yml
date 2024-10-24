@@ -30,7 +30,7 @@ jobs:
     strategy:
       matrix:
         test: ${{ fromJson(needs.gather-test-files.outputs.test_files) }}
-      fail-fast: true
+      fail-fast: false
     name: ${{ matrix.test }}
     steps:
       - name: Check out repository
