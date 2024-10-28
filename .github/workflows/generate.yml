@@ -20,10 +20,10 @@ jobs:
 
   generate-regression:
     name: TestDriver.ai / Generate / Regression
-    needs: generate-tests
+    needs: generate-exploratory
     uses: ./.github/workflows/generate-regressions.yml
     with:
-      base-branch: ${{ needs.generate-tests.outputs.pr-branch }}
+      base-branch: ${{ needs.generate-exploratory.outputs.pr-branch }}
       website-url: ${{ vars.TESTDRIVER_WEBSITE }}
     secrets:
       key: ${{ secrets.TESTDRIVER_API_KEY }}
