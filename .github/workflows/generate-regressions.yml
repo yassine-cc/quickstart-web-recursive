@@ -45,14 +45,13 @@ jobs:
           echo "::set-output name=files::$FILES_JSON"
 
   test:
-    name: Run Regressions
+    name: Run Regressions - ${{ matrix.markdown }}
     needs: gather-markdown-files
     runs-on: ubuntu-latest
     strategy:
       matrix:
         markdown: ${{ fromJson(needs.gather-markdown-files.outputs.markdown_files) }}
       fail-fast: false
-    name: ${{ matrix.markdown }} # Using just the filename
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
