@@ -2,7 +2,8 @@ name: Main Workflow
 
 permissions:
   actions: read
-  contents: write
+  contents: read
+  statuses: write
   pull-requests: write
 
 on:

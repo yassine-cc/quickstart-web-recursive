@@ -2,7 +2,8 @@ name: TestDriver.ai / Generate / Exploratory
 
 permissions:
   actions: read
-  contents: write
+  contents: read
+  statuses: write
   pull-requests: write
 
 on:

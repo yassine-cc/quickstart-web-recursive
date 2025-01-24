@@ -2,7 +2,8 @@ name: TestDriver.ai / Manual / Explore
 
 permissions:
   actions: read
-  contents: write
+  contents: read
+  statuses: write
   pull-requests: write
 
 on:
