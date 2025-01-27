@@ -2,7 +2,7 @@ name: TestDriver.ai / Generate / Regressions
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   statuses: write
   pull-requests: write
 
