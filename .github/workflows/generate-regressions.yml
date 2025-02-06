@@ -69,7 +69,7 @@ jobs:
       - name: Run AI Regression Test
         uses: testdriverai/action@main
         with:
-          key: ${{ secrets.key }}
+          key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
             ${{ env.MARKDOWN_CONTENT }}
             1. /summarize
