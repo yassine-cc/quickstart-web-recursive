@@ -89,7 +89,7 @@ jobs:
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Trigger Next-Level Exploratory Workflow
-        if: success() && inputs.depth < 3
+        if: success() && inputs.depth < 4
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -103,6 +103,6 @@ jobs:
                 "website-url": "${{ inputs.website-url }}",
                 "base-branch": "testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}",
                 "previous-content": "${{ env.MARKDOWN_CONTENT }}",
-                depth: "${{ inputs.depth + 1 }}"
+                depth: "${{ inputs.depth }}"
               }
             });

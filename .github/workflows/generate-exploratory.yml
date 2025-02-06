@@ -95,12 +95,11 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "generate-exploratory.yml",
+              workflow_id: "generate-regressions.yml",
               ref: context.ref,
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
                 "base-branch": "${{ steps.create-pr-branch.outputs.pr-branch }}",
-                "previous-content": "${{ env.MARKDOWN_CONTENT }}",
                 "depth": process.env.NEXT_DEPTH
               }
             });
