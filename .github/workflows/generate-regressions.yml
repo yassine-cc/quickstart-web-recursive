@@ -18,6 +18,10 @@ on:
       depth:
         type: number
         default: 0
+      previous-content:
+        type: string
+        required: false
+        description: Markdown content from previous regression step
     secrets:
       key:
         required: true

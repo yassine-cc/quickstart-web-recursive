@@ -95,7 +95,7 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "generate-regressions.yml",
+              workflow_id: "generate-exploratory.yml",
               ref: context.ref,
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
