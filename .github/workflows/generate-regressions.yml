@@ -18,10 +18,6 @@ on:
       depth:
         type: number
         default: 0
-      previous-content:
-        type: string
-        required: false
-        description: Markdown content from previous regression step
     secrets:
       key:
         required: true
@@ -70,6 +66,11 @@ jobs:
           echo "$CONTENT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      - id: generate-filename
+        name: Generate Random Short Filename
+        shell: bash
+        run: echo "filename=$(echo ${{ github.run_id }}-${{ github.run_attempt }}-$(( RANDOM % 10000 ))).yml" >> $GITHUB_OUTPUT
+
       - name: Run AI Regression Test
         uses: testdriverai/action@main
         with:
@@ -87,6 +88,7 @@ jobs:
           pr-base: ${{ inputs.base-branch }}
           pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
+          pr-test-filename: ${{steps.generate-filename.outputs.filename}}.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
@@ -105,7 +107,7 @@ jobs:
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
                 "base-branch": "testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}",
-                "previous-content": "${{ env.MARKDOWN_CONTENT }}",
+                "previous-file": "${{ env.MARKDOWN_CONTENT }}",
                 depth: "${{ inputs.depth }}"
               }
             });

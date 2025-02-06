@@ -19,10 +19,10 @@ on:
         type: string
         required: true
         default: main
-      previous-content:
+      previous-file:
         type: string
         required: false
-        description: Markdown content from previous regression step
+        description: Filename containing markdown content from previous regression step
   workflow_call:
     inputs:
       website-url:
@@ -35,10 +35,10 @@ on:
         type: string
         required: true
         default: main
-      previous-content:
+      previous-file:
         type: string
         required: false
-        description: Markdown content from previous regression step
+        description: Filename containing markdown content from previous regression step
     outputs:
       pr-branch:
         value: ${{ jobs.exploratory.outputs.pr-branch }}
@@ -65,7 +65,7 @@ jobs:
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
-            ${{ inputs.previous-content }}
+            ${{ inputs.previous-file && format('/run {0}', inputs.previous-file) || '' }}
             1. /generate web 3
             2. /summarize
           prerun: |
