@@ -61,7 +61,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ inputs.base-branch }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read file content into environment variable
         id: read_file
@@ -88,6 +87,9 @@ jobs:
           pr-base: ${{ inputs.base-branch }}
           pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE_COLOR: "3"
 
       - name: Trigger Next-Level Exploratory Workflow
         if: success() && inputs.depth < 4
