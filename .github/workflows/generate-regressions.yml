@@ -97,7 +97,7 @@ jobs:
               ref: context.ref,
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
-                "base-branch": "${{ inputs.base-branch }}",
+                "base-branch": "testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}",
                 "previous-content": "${{ env.MARKDOWN_CONTENT }}",
                 depth: "${{ inputs.depth + 1 }}"
               }
