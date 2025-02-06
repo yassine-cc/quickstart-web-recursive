@@ -85,8 +85,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
 
-      - name: Trigger Regression Workflow (Processing Generated Tests)
-        if: success()
+      - name: Calculate Next Depth
+        id: increment-depth
+        run: echo "NEXT_DEPTH=$(( ${{ inputs.depth }} + 1 ))" >> $GITHUB_ENV
+
+      - name: Trigger Next-Level Exploratory Workflow
+        if: success() && inputs.depth < 3
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_TOKEN }}
@@ -94,11 +98,12 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "generate-regressions.yml",
+              workflow_id: "generate.yml",
               ref: context.ref,
               inputs: {
                 website-url: "${{ inputs.website-url }}",
-                base-branch: "${{ steps.create-pr-branch.outputs.pr-branch }}",
-                depth: "${{ inputs.depth + 1 }}"
+                base-branch: "${{ inputs.base-branch }}",
+                previous-content: "${{ env.MARKDOWN_CONTENT }}",
+                depth: process.env.NEXT_DEPTH
               }
             });
