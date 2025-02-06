@@ -96,9 +96,9 @@ jobs:
               workflow_id: "generate-exploratory.yml",
               ref: context.ref,
               inputs: {
-                website-url: "${{ inputs.website-url }}",
-                base-branch: "${{ inputs.base-branch }}",
-                previous-content: "${{ env.MARKDOWN_CONTENT }}",
+                "website-url": "${{ inputs.website-url }}",
+                "base-branch": "${{ inputs.base-branch }}",
+                "previous-content": "${{ env.MARKDOWN_CONTENT }}",
                 depth: "${{ inputs.depth + 1 }}"
               }
             });
