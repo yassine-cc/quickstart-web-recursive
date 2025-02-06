@@ -94,7 +94,7 @@ jobs:
           FORCE_COLOR: "3"
 
       - name: Trigger Next-Level Exploratory Workflow
-        if: success() && inputs.depth < 4
+        if: success() && inputs.depth < 2
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

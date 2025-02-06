@@ -65,7 +65,7 @@ jobs:
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
-            ${{ inputs.previous-file && format('/run {0}', inputs.previous-file) || '' }}
+            ${{ inputs.previous-file && format('1. /run {0}', inputs.previous-file) || '' }}
             1. /generate web 3
             2. /summarize
           prerun: |
