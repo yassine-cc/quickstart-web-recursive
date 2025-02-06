@@ -7,19 +7,41 @@ permissions:
   pull-requests: write
 
 on:
+  workflow_dispatch:
+    inputs:
+      website-url:
+        type: string
+        required: true
+      depth:
+        type: number
+        default: 0
+      base-branch:
+        type: string
+        required: true
+      previous-content:
+        type: string
+        required: false
+        description: Markdown content from previous regression step
   workflow_call:
     inputs:
       website-url:
         type: string
         required: true
-        description: The URL of the website to test
+      depth:
+        type: number
+        default: 0
+      base-branch:
+        type: string
+        required: true
+      previous-content:
+        type: string
+        required: false
+        description: Markdown content from previous regression step
     secrets:
       key:
         required: true
-        description: The TestDriver API key
       GH_TOKEN:
         required: true
-        description: The GitHub token
     outputs:
       pr-branch:
         value: ${{ jobs.exploratory.outputs.pr-branch }}
@@ -30,19 +52,24 @@ jobs:
     outputs:
       pr-branch: ${{ steps.create-pr-branch.outputs.pr-branch }}
     steps:
-      - name: Extract current branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: extract_branch
+      - name: Check recursion depth
+        run: |
+          if [ ${{ inputs.depth }} -ge 3 ]; then
+            echo "Max recursion depth reached. Exiting."
+            exit 0
+          fi
+
       - id: create-pr-branch
         name: Create PR branch name
         shell: bash
         run: echo "pr-branch=testdriver/exploratory-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_OUTPUT
+
       - uses: testdriverai/action@main
         with:
           key: ${{ secrets.key }}
           prompt: |
-            1. /generate web 10
+            ${{ inputs.previous-content }}
+            1. /generate web 3
             2. /summarize
           prerun: |
             cd $env:TEMP
@@ -51,9 +78,27 @@ jobs:
             Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ inputs.website-url }}"
             exit
           create-pr: true
-          pr-base: ${{ steps.extract_branch.outputs.branch }}
-          pr-title: "TestDriver.ai / Generate Test Plans"
+          pr-base: ${{ inputs.base-branch }}
+          pr-title: "TestDriver.ai / Generate Test Plans - Depth ${{ inputs.depth }}"
           pr-branch: ${{ steps.create-pr-branch.outputs.pr-branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
+
+      - name: Trigger Regression Workflow (Processing Generated Tests)
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "generate-regressions.yml",
+              ref: context.ref,
+              inputs: {
+                website-url: "${{ inputs.website-url }}",
+                base-branch: "${{ steps.create-pr-branch.outputs.pr-branch }}",
+                depth: "${{ inputs.depth + 1 }}"
+              }
+            });

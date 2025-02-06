@@ -12,18 +12,17 @@ on:
       website-url:
         type: string
         required: true
-        description: The URL of the website to test
       base-branch:
         type: string
         required: true
-        description: The branch name of the pull request
+      depth:
+        type: number
+        default: 0
     secrets:
       key:
         required: true
-        description: The TestDriver API key
       GH_TOKEN:
         required: true
-        description: The GitHub token
 
 jobs:
   gather-markdown-files:
@@ -59,10 +58,6 @@ jobs:
         with:
           ref: ${{ inputs.base-branch }}
 
-      - name: Display filename being tested
-        run: |
-          echo "Running job for file: ${{ matrix.markdown }}.md"
-
       - name: Read file content into environment variable
         id: read_file
         run: |
@@ -70,27 +65,40 @@ jobs:
           echo "MARKDOWN_CONTENT<<EOF" >> $GITHUB_ENV
           echo "$CONTENT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-      - name: Extract current branch name
-        shell: bash
-        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-        id: extract_branch
-      - uses: testdriverai/action@main
+
+      - name: Run AI Regression Test
+        uses: testdriverai/action@main
         with:
           key: ${{ secrets.key }}
           prompt: |
-            ${{ env.MARKDOWN_CONTENT }}  # Use the content of the file from the environment
+            ${{ env.MARKDOWN_CONTENT }}
             1. /summarize
           prerun: |
             cd $env:TEMP
             npm init -y
             npm install dashcam-chrome
-            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ vars.TESTDRIVER_WEBSITE }}"
+            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ inputs.website-url }}"
             exit
           create-pr: true
           pr-base: ${{ inputs.base-branch }}
-          pr-title: "TestDriver.ai / Generate Test / ${{ matrix.markdown }}"
+          pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
-          pr-test-filename: ${{matrix.markdown}}.yml
-        env:
-          FORCE_COLOR: "3"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Next-Level Exploratory Workflow
+        if: success() && inputs.depth < 3
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "generate-exploratory.yml",
+              ref: context.ref,
+              inputs: {
+                website-url: "${{ inputs.website-url }}",
+                base-branch: "${{ inputs.base-branch }}",
+                previous-content: "${{ env.MARKDOWN_CONTENT }}",
+                depth: "${{ inputs.depth + 1 }}"
+              }
+            });
