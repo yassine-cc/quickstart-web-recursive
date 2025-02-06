@@ -73,7 +73,7 @@ jobs:
 
       - name: Run AI Regression Test
         uses: testdriverai/action@main
-        ontinue-on-error: true
+        continue-on-error: true
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
