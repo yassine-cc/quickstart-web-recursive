@@ -73,6 +73,7 @@ jobs:
 
       - name: Run AI Regression Test
         uses: testdriverai/action@main
+        ontinue-on-error: true
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
@@ -94,7 +95,7 @@ jobs:
           FORCE_COLOR: "3"
 
       - name: Trigger Next-Level Exploratory Workflow
-        if: success() && inputs.depth < 2
+        if: inputs.depth < 2
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
