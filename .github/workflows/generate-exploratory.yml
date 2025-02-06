@@ -62,7 +62,7 @@ jobs:
         run: echo "pr-branch=testdriver/exploratory-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_OUTPUT
 
       - uses: testdriverai/action@main
-        ontinue-on-error: true
+        continue-on-error: true
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
