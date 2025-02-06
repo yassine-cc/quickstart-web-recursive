@@ -7,7 +7,7 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       website-url:
         type: string
