@@ -61,6 +61,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ inputs.base-branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Read file content into environment variable
         id: read_file
