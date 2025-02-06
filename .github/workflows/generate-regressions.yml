@@ -88,7 +88,7 @@ jobs:
           pr-base: ${{ inputs.base-branch }}
           pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
-          pr-test-filename: ${{steps.generate-filename.outputs.filename}}.yml
+          pr-test-filename: ${{steps.generate-filename.outputs.filename}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
@@ -107,7 +107,7 @@ jobs:
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
                 "base-branch": "testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}",
-                "previous-file": "${{ env.MARKDOWN_CONTENT }}",
+                "previous-file": "${{ steps.generate-filename.outputs.filename }}",
                 depth: "${{ inputs.depth }}"
               }
             });
