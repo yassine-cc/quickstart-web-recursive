@@ -86,6 +86,7 @@ jobs:
             Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ inputs.website-url }}"
             exit
           create-pr: true
+          branch: ${{ inputs.base-branch }}
           pr-base: ${{ inputs.base-branch }}
           pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
           pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
