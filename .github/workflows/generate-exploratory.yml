@@ -102,6 +102,7 @@ jobs:
               inputs: {
                 "website-url": "${{ inputs.website-url }}",
                 "base-branch": "${{ steps.create-pr-branch.outputs.pr-branch }}",
+                "previous-file": "${{ inputs.previous-file }}",
                 "depth": process.env.NEXT_DEPTH
               }
             });

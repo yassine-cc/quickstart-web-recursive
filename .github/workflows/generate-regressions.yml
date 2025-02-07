@@ -18,6 +18,10 @@ on:
       depth:
         type: number
         default: 0
+      previous-file:
+        type: string
+        required: false
+        description: Filename containing markdown content from previous regression step
     secrets:
       key:
         required: true
@@ -77,6 +81,7 @@ jobs:
         with:
           key: ${{ secrets.TESTDRIVER_API_KEY }}
           prompt: |
+            ${{ inputs.previous-file && format('1. /run {0}', inputs.previous-file) || '' }}
             ${{ env.MARKDOWN_CONTENT }}
             1. /summarize
           prerun: |
