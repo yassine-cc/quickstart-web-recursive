@@ -1,31 +1,71 @@
 name: Main Workflow
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   statuses: write
   pull-requests: write
 
 on:
+  workflow_call:
+    inputs:
+      previous-file:
+        type: string
+        description: Previous test yaml file to use as a base
+      depth:
+        type: number
+        default: 1
+      max-depth:
+        type: number
+        default: 3
   workflow_dispatch:
+    inputs:
+      dispatchId:
+        type: string
+        required: true
+      previous-file:
+        type: string
+        description: Previous test yaml file to use as a base
+      depth:
+        type: number
+        default: 1
+      max-depth:
+        type: number
+        default: 3
 
 jobs:
+  match-dispatchId:
+    if: ${{ inputs.dispatchId }}
+    runs-on: [ubuntu-latest]
+    steps:
+      - id: dispatch-id
+        name: dispatchId:${{ inputs.dispatchId }}
+        run: echo "💁 The dispatch ID is ${{ github.event.inputs.dispatchId }}"
+
   generate-exploratory:
-    name: TestDriver.ai / Generate / Exploratory
+    needs: match-dispatchId
     uses: ./.github/workflows/generate-exploratory.yml
     with:
+      depth: ${{ fromJson(inputs.depth) }}
+      max-depth: ${{ fromJson(inputs.max-depth) }}
       website-url: ${{ vars.TESTDRIVER_WEBSITE }}
+      base-branch: ${{ github.ref_name }}
+      previous-file: ${{ inputs.previous-file }}
     secrets:
       key: ${{ secrets.TESTDRIVER_API_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   generate-regression:
-    name: TestDriver.ai / Generate / Regression
     needs: generate-exploratory
     uses: ./.github/workflows/generate-regressions.yml
     with:
-      base-branch: ${{ needs.generate-exploratory.outputs.pr-branch }}
+      depth: ${{ fromJson(inputs.depth) }}
+      max-depth: ${{ fromJson(inputs.max-depth) }}
       website-url: ${{ vars.TESTDRIVER_WEBSITE }}
+      base-branch: ${{ needs.generate-exploratory.outputs.pr-branch }}
     secrets:
       key: ${{ secrets.TESTDRIVER_API_KEY }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+
+      

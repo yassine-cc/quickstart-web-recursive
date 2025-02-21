@@ -7,22 +7,6 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_dispatch:
-    inputs:
-      website-url:
-        type: string
-        required: true
-      depth:
-        type: number
-        default: 0
-      base-branch:
-        type: string
-        required: true
-        default: main
-      previous-file:
-        type: string
-        required: false
-        description: Filename containing markdown content from previous regression step
   workflow_call:
     inputs:
       website-url:
@@ -30,7 +14,10 @@ on:
         required: true
       depth:
         type: number
-        default: 0
+        required: true
+      max-depth:
+        type: number
+        required: true
       base-branch:
         type: string
         required: true
@@ -39,23 +26,22 @@ on:
         type: string
         required: false
         description: Filename containing markdown content from previous regression step
+    secrets:
+      key:
+        required: true
+      GH_TOKEN:
+        required: true
     outputs:
       pr-branch:
         value: ${{ jobs.exploratory.outputs.pr-branch }}
 
 jobs:
   exploratory:
+    name: Generate Exploratory Test Plans - Depth ${{ inputs.depth }}/${{ inputs.max-depth }}
     runs-on: ubuntu-latest
     outputs:
       pr-branch: ${{ steps.create-pr-branch.outputs.pr-branch }}
     steps:
-      - name: Check recursion depth
-        run: |
-          if [ ${{ inputs.depth }} -ge 3 ]; then
-            echo "Max recursion depth reached. Exiting."
-            exit 0
-          fi
-
       - id: create-pr-branch
         name: Create PR branch name
         shell: bash
@@ -64,45 +50,21 @@ jobs:
       - uses: testdriverai/action@main
         continue-on-error: true
         with:
-          key: ${{ secrets.TESTDRIVER_API_KEY }}
+          key: ${{ secrets.key }}
           prompt: |
-            ${{ inputs.previous-file && format('1. /run {0}', inputs.previous-file) || '' }}
-            1. /generate web 3
+            1. /generate web 3 ${{ inputs.previous-file && format('testdriver/{0}', inputs.previous-file) || '' }}
             2. /summarize
           prerun: |
+            yarn global add https://github.com/testdriverai/testdriverai#yassine/embed-tests
             cd $env:TEMP
             npm init -y
             npm install dashcam-chrome
-            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ inputs.website-url }}"
+            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized","--load-extension=$(pwd)/node_modules/dashcam-chrome/build","${{ inputs.website-url }}"
             exit
           create-pr: true
-          branch: ${{ inputs.base-branch }}
           pr-base: ${{ inputs.base-branch }}
-          pr-title: "TestDriver.ai / Generate Test Plans - Depth ${{ inputs.depth }}"
+          pr-title: "TestDriver.ai / Generate Test Plans - Depth ${{ inputs.depth }}/${{ inputs.max-depth }}"
           pr-branch: ${{ steps.create-pr-branch.outputs.pr-branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
-
-      - name: Calculate Next Depth
-        id: increment-depth
-        run: echo "NEXT_DEPTH=$(( ${{ inputs.depth }} + 1 ))" >> $GITHUB_ENV
-
-      - name: Trigger Next-Level Exploratory Workflow
-        if: inputs.depth < 3
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "generate-regressions.yml",
-              ref: context.ref,
-              inputs: {
-                "website-url": "${{ inputs.website-url }}",
-                "base-branch": "${{ steps.create-pr-branch.outputs.pr-branch }}",
-                "previous-file": "${{ inputs.previous-file }}",
-                "depth": process.env.NEXT_DEPTH
-              }
-            });

@@ -7,26 +7,28 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       website-url:
         type: string
         required: true
+      depth:
+        type: number
+        required: true
+      max-depth:
+        type: number
+        required: true
       base-branch:
         type: string
         required: true
-      depth:
-        type: number
-        default: 0
-      previous-file:
-        type: string
-        required: false
-        description: Filename containing markdown content from previous regression step
     secrets:
       key:
         required: true
       GH_TOKEN:
         required: true
+    outputs:
+      data:
+        value: ${{ jobs.test.outputs.data }}
 
 jobs:
   gather-markdown-files:
@@ -43,15 +45,18 @@ jobs:
       - name: Find all markdown files and extract filenames
         id: markdown_list
         run: |
-          FILES=$(ls ./testdriver/generate/*.md)
-          FILENAMES=$(basename -a $FILES | sed 's/\.md$//')
+          # Get list of .md files changed in the last commit
+          FILES=$(git show --name-only --format= | grep "^testdriver/generate/.*\.md$" || true)
+          FILENAMES=$(echo "$FILES" | while IFS= read -r file; do basename "$file" .md; done)
           FILES_JSON=$(echo "$FILENAMES" | jq -R -s -c 'split("\n")[:-1]')
           echo "::set-output name=files::$FILES_JSON"
 
   test:
-    name: Run Regressions - ${{ matrix.markdown }}
+    name: Run Regressions - ${{ matrix.markdown }} - Depth ${{ inputs.depth }}/${{ inputs.max-depth }}
     needs: gather-markdown-files
     runs-on: ubuntu-latest
+    outputs:
+      data: ${{ toJson(steps.set-outputs.outputs) }}
     strategy:
       matrix:
         markdown: ${{ fromJson(needs.gather-markdown-files.outputs.markdown_files) }}
@@ -73,48 +78,76 @@ jobs:
       - id: generate-filename
         name: Generate Random Short Filename
         shell: bash
-        run: echo "filename=$(echo ${{ github.run_id }}-${{ github.run_attempt }}-$(( RANDOM % 10000 ))).yml" >> $GITHUB_OUTPUT
+        run:
+          echo "filename=${{ matrix.markdown }}_${{ github.run_id }}_${{ github.run_attempt }}.yml" >>
+          $GITHUB_OUTPUT
+      - id: generate-pr-branch
+        name: Generate PR Branch Name
+        shell: bash
+        run:
+          echo "pr-branch=testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{
+          github.run_attempt }}" >> $GITHUB_OUTPUT
 
       - name: Run AI Regression Test
         uses: testdriverai/action@main
         continue-on-error: true
         with:
-          key: ${{ secrets.TESTDRIVER_API_KEY }}
+          key: ${{ secrets.key }}
           prompt: |
-            ${{ inputs.previous-file && format('1. /run {0}', inputs.previous-file) || '' }}
             ${{ env.MARKDOWN_CONTENT }}
             1. /summarize
           prerun: |
             cd $env:TEMP
             npm init -y
             npm install dashcam-chrome
-            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized", "--load-extension=$(pwd)/node_modules/dashcam-chrome/build", "${{ inputs.website-url }}"
+            Start-Process "C:/Program Files/Google/Chrome/Application/chrome.exe" -ArgumentList "--start-maximized","--load-extension=$(pwd)/node_modules/dashcam-chrome/build","${{ inputs.website-url }}"
             exit
           create-pr: true
           branch: ${{ inputs.base-branch }}
           pr-base: ${{ inputs.base-branch }}
           pr-title: "TestDriver.ai / Run Regression / ${{ matrix.markdown }}"
-          pr-branch: testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}
+          pr-branch: ${{ steps.generate-pr-branch.outputs.pr-branch }}
           pr-test-filename: ${{steps.generate-filename.outputs.filename}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
 
-      - name: Trigger Next-Level Exploratory Workflow
-        if: inputs.depth < 2
+      - id: set-outputs
+        name: Set Outputs
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "generate-exploratory.yml",
-              ref: context.ref,
-              inputs: {
-                "website-url": "${{ inputs.website-url }}",
-                "base-branch": "testdriver/regression-${{ matrix.markdown }}-${{ github.run_id }}-${{ github.run_attempt }}",
-                "previous-file": "${{ steps.generate-filename.outputs.filename }}",
-                depth: "${{ inputs.depth }}"
-              }
-            });
+            const data = {
+              branch: ${{ toJson(steps.generate-pr-branch.outputs.pr-branch) }},
+              filename: ${{ toJson(steps.generate-filename.outputs.filename) }}
+            }
+            core.setOutput(${{ toJson(matrix.markdown) }}.replace(/(-|\s)+/g, "_"), JSON.stringify(data));
+  
+  get-next-level-data:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Next-Level Data
+        run: echo ${{ toJson(needs.test.outputs.data) }}
+      
+      
+      
+      # - name: Trigger Next-Level Exploratory Workflow
+      #   if: ${{ inputs.depth != inputs.max-depth }}
+      #   uses: actions/github-script@v6
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     script: |
+      #       await github.rest.actions.createWorkflowDispatch({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         workflow_id: "generate.yml",
+      #         ref: ${{ toJson(steps.generate-pr-branch.outputs.pr-branch) }},
+      #         inputs: {
+      #           "depth": "" + (${{ inputs.depth }} + 1),
+      #           "max-depth": "" + ${{ inputs.max-depth }},
+      #           "previous-file": ${{ toJson( steps.generate-filename.outputs.filename) }}
+      #         }
+      #       });
+
+            
