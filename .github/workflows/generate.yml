@@ -9,23 +9,23 @@ permissions:
 on:
   workflow_call:
     inputs:
-      previous-file:
+      branch:
         type: string
-        description: Previous test yaml file to use as a base
+        default: ${{ github.ref_name }}
       depth:
         type: number
         default: 1
       max-depth:
         type: number
         default: 3
+      previous-file:
+        type: string
+        description: Previous test yaml file to use as a base
   workflow_dispatch:
     inputs:
       dispatchId:
         type: string
         required: true
-      previous-file:
-        type: string
-        description: Previous test yaml file to use as a base
       depth:
         type: number
         default: 1

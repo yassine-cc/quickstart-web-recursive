@@ -112,23 +112,47 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "3"
 
-      - id: set-outputs
-        name: Set Outputs
-        uses: actions/github-script@v6
+      - id: matrix
+        run: |
+          matrix="{\"markdown\": \"${{ matrix.markdown }}\", \"branch\": \"${{ steps.generate-pr-branch.outputs.pr-branch }}\", \"filename\": \"${{ steps.generate-filename.outputs.filename }}\"}"
+          echo "$matrix" > matrix
+          echo "::set-output name=matrix::$matrix"
+
+      - uses: actions/upload-artifact@v3
         with:
-          script: |
-            const data = {
-              branch: ${{ toJson(steps.generate-pr-branch.outputs.pr-branch) }},
-              filename: ${{ toJson(steps.generate-filename.outputs.filename) }}
-            }
-            core.setOutput(${{ toJson(matrix.markdown) }}.replace(/(-|\s)+/g, "_"), JSON.stringify(data));
+          name: ${{ hashFiles('matrix') || 'none' }}
+          path: matrix
+          if-no-files-found: warn
   
-  get-next-level-data:
-    needs: test
-    runs-on: ubuntu-latest
+  get-results:
+    runs-on:  ubuntu-22.04
+    needs: test 
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Get Next-Level Data
-        run: echo ${{ toJson(needs.test.outputs.data) }}
+      - uses: actions/download-artifact@v3
+      - run: |
+          matrix="$(cat */matrix | jq -c --slurp .)"
+          echo "::set-output name=matrix::$matrix"
+        id: matrix
+
+  generate-next-depth:
+    if: ${{inputs.depth != inputs.max-depth}}
+    name:
+    needs: get-results
+    strategy:
+      fail-fast: false
+      matrix:
+        includes: ${{ fromJSON(needs.get-results.outputs.matrix) }}
+    uses: ./.github/workflows/generate.yml
+    with:
+      depth: ${{ inputs.depth }} + 1
+      branch: ${{fromJson(matrix).branch}}
+      max-depth: ${{ inputs.max-depth }}
+      previous-file: ${{fromJson(matrix).filename}}
+      
+      
+      
       
       
       
