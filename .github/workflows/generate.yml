@@ -7,20 +7,6 @@ permissions:
   pull-requests: write
 
 on:
-  workflow_call:
-    inputs:
-      branch:
-        type: string
-        default: ${{ github.ref_name }}
-      depth:
-        type: number
-        default: 1
-      max-depth:
-        type: number
-        default: 3
-      previous-file:
-        type: string
-        description: Previous test yaml file to use as a base
   workflow_dispatch:
     inputs:
       dispatchId:
@@ -32,6 +18,9 @@ on:
       max-depth:
         type: number
         default: 3
+      previous-file:
+        type: string
+        description: Previous test yaml file to use as a base
 
 jobs:
   match-dispatchId:
