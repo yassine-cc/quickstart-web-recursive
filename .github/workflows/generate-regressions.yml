@@ -117,46 +117,55 @@ jobs:
         with:
           name: ${{ hashFiles('matrix') || 'none' }}
           path: matrix
-          if-no-files-found: warn\
+          if-no-files-found: warn
 
   generate-next-depth:
-    name: Trigger Next Level
     if: ${{inputs.depth != inputs.max-depth}}
+    name: Trigger Next Level
+    needs: test
     runs-on: ubuntu-latest
     steps:
-      # - name: Exit job if branch does not exist
-      #   run: |
-      #     echo "matrix: ${{ matrix }}"
-      #     echo "Checking if branch ${{fromJson(matrix).branch}} exists"
-      #     echo "branch-exists=$(gh api /repos/${{ github.repository }}/branches/${{fromJson(matrix).branch}} --jq .protected)" >> $GITHUB_OUTPUT
-      #     if [ "$branch_exists" = "false" ]; then
-      #       echo "Branch ${{fromJson(matrix).branch}} does not exist, exiting job"
-      #       exit 0
-      #     fi
-
       - uses: actions/download-artifact@v4
       - id: get-results
         run: |
           matrix="$(cat */matrix | jq -c --slurp .)"
           echo "results: $matrix"
-          echo "results=$matrix" >> $GITHUB_OUTPUT
+          echo "results=$matrix" >> $GITHUB_ENV
 
-      - name: Trigger Next-Level Exploratory Workflow
+      - name: Trigger Next Depth of Workflows
         if: ${{ inputs.depth != inputs.max-depth }}
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_PAT_TOKEN }}
           script: |
-            console.log(${{ toJson(steps.get-results.outputs.results) }})
-            Array(JSON.parse(${{ steps.get-results.outputs.results }})).forEach(item => {
+            const results = JSON.parse(process.env.results);
+            
+            for (const item of results) {
+              // Check if branch exists
+              const branchExists = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: item.branch
+              })
+                .then(()=>true)
+                .catch(()=>false)
+              
+              if(!branchExists) {
+                console.log(`Branch ${item.branch} does not exist, skipping workflow dispatch`);
+                continue              
+              }
+
+              // Branch exists, dispatch workflow
               await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: "generate.yml",
                 ref: item.branch,
                 inputs: {
-                "depth": "" + (${{ inputs.depth }} + 1),
-                "max-depth": "" + ${{ inputs.max-depth }},
-                "previous-file": item.filename
-              }
-            });
+                  "depth": "" + (${{ inputs.depth }} + 1),
+                  "max-depth": "" + ${{ inputs.max-depth }},
+                  "previous-file": item.filename
+                }
+              });
+              console.log(`Dispatched workflow for branch: ${item.branch}`);
+            }
