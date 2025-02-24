@@ -160,14 +160,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "generate.yml",
-              ref: ${{fromJson(matrix).branch}},
-              inputs: {
+            console.log(${{ toJson(needs.get-results.outputs.matrix) }})
+            Array(JSON.parse(${{ needs.get-results.outputs.matrix }})).forEach(item => {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "generate.yml",
+                ref: item.branch,
+                inputs: {
                 "depth": "" + (${{ inputs.depth }} + 1),
                 "max-depth": "" + ${{ inputs.max-depth }},
-                "previous-file": ${{fromJson(matrix).filename}}
+                "previous-file": item.filename
               }
             });
