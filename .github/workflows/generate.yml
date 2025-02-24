@@ -56,6 +56,27 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
+  save-results:
+    needs: generate-regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v6
+        env:
+          RESULTS: ${{ needs.generate-regression.outputs.results }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(process.env.RESULTS);
+            console.log(results);
+            fs.writeFileSync('results.json', JSON.stringify(results, null, 2));
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results.json
+          path: results.json
+
+
   generate-next-depth:
     if: ${{inputs.depth != inputs.max-depth}}
     name: Trigger Next Level
@@ -70,9 +91,9 @@ jobs:
         with:
           github-token: ${{ secrets.GH_PAT_TOKEN }}
           script: |
-            const results = JSON.parse(process.env.RESULTS);
+            const results = [];
             
-            for (const item of results) {
+            for (const item of JSON.parse(process.env.RESULTS)) {
               // Check if branch exists
               const branchExists = await github.rest.repos.getBranch({
                 owner: context.repo.owner,
@@ -87,6 +108,8 @@ jobs:
                 continue              
               }
 
+              const dispatchId = Math.random().toString(36).substring(2, 15);
+
               // Branch exists, dispatch workflow
               await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
@@ -94,13 +117,22 @@ jobs:
                 workflow_id: "generate.yml",
                 ref: item.branch,
                 inputs: {
+                  "dispatchId": dispatchId,
                   "depth": "" + (${{ inputs.depth }} + 1),
                   "max-depth": "" + ${{ inputs.max-depth }},
                   "previous-file": item.filename
                 }
               });
               console.log(`Dispatched workflow for branch: ${item.branch}`);
+              results.push({
+                ...item,
+                dispatchId: dispatchId
+              });
             }
-
-            await new Promise(resolve => setTimeout(resolve, 120000));
-
+            fs.writeFileSync('results.json', JSON.stringify(results, null, 2));
+            
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results.json
+          path: results.json

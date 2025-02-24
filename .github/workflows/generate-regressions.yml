@@ -136,6 +136,25 @@ jobs:
           matrix="$(cat */matrix | jq -c --slurp .)"
           echo "results: $matrix"
           echo "results=$matrix" >> $GITHUB_OUTPUT
+      - name: Delete Artifact
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ toJson(github.run_id) }}
+            }).then(r => r.data.artifacts);
+
+            console.log({ artifacts });
+
+            for(const artifact of artifacts) {
+              github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id
+              });
+            }
 
 
   
