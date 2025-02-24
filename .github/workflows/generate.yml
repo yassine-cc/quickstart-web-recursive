@@ -53,7 +53,54 @@ jobs:
       base-branch: ${{ needs.generate-exploratory.outputs.pr-branch }}
     secrets:
       key: ${{ secrets.TESTDRIVER_API_KEY }}
-      GH_TOKEN: ${{ secrets.GH_PAT_TOKEN }}
-  
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      
+
+  generate-next-depth:
+    if: ${{inputs.depth != inputs.max-depth}}
+    name: Trigger Next Level
+    needs: generate-regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Next Depth of Workflows
+        if: ${{ inputs.depth != inputs.max-depth }}
+        uses: actions/github-script@v6
+        env:
+          RESULTS: ${{ needs.generate-regression.outputs.results }}
+        with:
+          github-token: ${{ secrets.GH_PAT_TOKEN }}
+          script: |
+            const results = JSON.parse(process.env.RESULTS);
+            
+            for (const item of results) {
+              // Check if branch exists
+              const branchExists = await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: item.branch
+              })
+                .then(()=>true)
+                .catch(()=>false)
+              
+              if(!branchExists) {
+                console.log(`Branch ${item.branch} does not exist, skipping workflow dispatch`);
+                continue              
+              }
+
+              // Branch exists, dispatch workflow
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: "generate.yml",
+                ref: item.branch,
+                inputs: {
+                  "depth": "" + (${{ inputs.depth }} + 1),
+                  "max-depth": "" + ${{ inputs.max-depth }},
+                  "previous-file": item.filename
+                }
+              });
+              console.log(`Dispatched workflow for branch: ${item.branch}`);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 120000));
+
