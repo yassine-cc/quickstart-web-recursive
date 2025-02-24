@@ -136,7 +136,7 @@ jobs:
         if: ${{ inputs.depth != inputs.max-depth }}
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GH_PAT_TOKEN }}
+          github-token: ${{ secrets.GH_TOKEN }}
           script: |
             const results = JSON.parse(process.env.results);
             
